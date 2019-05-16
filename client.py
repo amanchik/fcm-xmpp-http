@@ -41,7 +41,7 @@ class FCM(ClientXMPP):
             msg.reply("Thanks for sending\n%(body)s" % msg).send()
     def fcm_message(self, data):
         print(data)
-        y = BeautifulSoup(str(data))
+        y = BeautifulSoup(str(data),features='html.parser')
         print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
         print(obj['message_type'])
