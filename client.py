@@ -8,13 +8,16 @@ import logging
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 import requests
-
+import datetime
+import time
 
 import asyncio
 from aiohttp import web
-
+import redis
 XMPP = {}
-
+message_senders ={}
+failure_reasons ={'DEVICE_UNREGISTERED':1,'BAD_REGISTRATION':2}
+r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 
 
 class FCM(ClientXMPP):
@@ -44,7 +47,27 @@ class FCM(ClientXMPP):
         y = BeautifulSoup(str(data),features='html.parser')
         print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
+
         print(obj['message_type'])
+        today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
+        look_for = today + '_status_' + obj['message_id']
+        if obj['message_type'] == 'ack':
+            r.set(look_for,json.dumps({'online_notification_sent_at':int(time.time()),'message_id':obj['message_id']}))
+            ack = {'to':obj['from'],'message_id':obj['message_id'],'message_type':'ack'}
+            XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
+        elif obj['message_type'] == 'nack':
+            op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],'error':obj['error']}
+            if obj['error'] in failure_reasons:
+                op['failure_reason']=failure_reasons[obj['error']]
+            else:
+                op['failure_reason'] =3
+            r.set(look_for,
+                  json.dumps(op))
+        elif obj['message_type'] == 'receipt':
+            look_for = today + '_message_' + obj['message_id'][4:]
+            r.set(look_for,
+                  json.dumps({'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}))
+
 
     def start(self):
         self.connect(address=('fcm-xmpp.googleapis.com',5235),use_ssl=True,disable_starttls=False)
@@ -61,14 +84,15 @@ async def handle(request):
     "Handle the HTTP request and block until the vcard is fetched"
     err_404 = web.Response(status=404, text='Not found')
     body = await  request.json()
-    for message in body:
-        print(message['notification'])
+  #  for message in body:
+   #     print(message['notification'])
 
 
    
     try:
         fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
         for message in body:
+            message_senders[message['message_id']]=fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
     except Exception as e:
         print(e)
