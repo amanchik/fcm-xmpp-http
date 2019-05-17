@@ -66,19 +66,22 @@ async def handle(request):
 
    
     try:
-        XMPP['83403511783'].fcm_send(json.dumps(body))
+        fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
+        for message in body:
+            XMPP[fcm_sender_id].fcm_send(json.dumps(message))
     except Exception as e:
         print(e)
         log.warning("Failed to fetch vcard for")
         return err_404
 
 
-    return web.Response(text="yes")
+    return web.Response(text="done")
 
 async def init(loop, host: str, port: str):
     "Initialize the HTTP server"
     app = web.Application(loop=loop)
-    app.router.add_route('POST', '/', handle)
+
+    app.router.add_route('POST', '/{fcm_sender_id}', handle)
     srv = await loop.create_server(app.make_handler(), host, port)
     log.info("Server started at http://%s:%s", host, port)
     return srv
@@ -118,7 +121,7 @@ def parse_args():
 
     return parser.parse_args()
 
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 PORT = 8768
 
 
