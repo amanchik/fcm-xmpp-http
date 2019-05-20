@@ -90,17 +90,16 @@ async def handle(request):
    #     print(message['notification'])
 
     fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
-
+    FCM("","").connection_lost()
     if not XMPP[fcm_sender_id].is_connected():
         XMPP[fcm_sender_id].reconnect()
-    try:
-        for message in body:
-            message_senders[message['message_id']]=fcm_sender_id
+    for message in body:
+        try:
+            message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-    except Exception as e:
-        print(e)
-        log.warning("Failed to fetch vcard for")
-        return err_404
+        except Exception as e:
+            print(e)
+            return err_404
 
 
     return web.Response(text="done")
