@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 EXPOSE 8768
-CMD [ "python", "./client.py" ]
+CMD [ "python","-u", "./client.py" ]
