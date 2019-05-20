@@ -3,3 +3,5 @@ requests
 slixmpp
 beautifulsoup4
 redis
+hyper
+PyJWT

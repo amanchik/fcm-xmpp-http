@@ -1,0 +1,22 @@
+version: "3.0"
+services:
+  pushserver:
+    image: fcm-trial:latest
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1g
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "8768:8768"
+    networks:
+      - webnet
+    environment:
+      - APP_URL
+      - REDIS_HOST
+networks:
+  webnet:
+
