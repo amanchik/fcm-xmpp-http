@@ -86,6 +86,7 @@ async def handle(request):
     "Handle the HTTP request and block until the vcard is fetched"
     err_404 = web.Response(status=404, text='Not found')
     body = await  request.json()
+    print(body)
   #  for message in body:
    #     print(message['notification'])
 
