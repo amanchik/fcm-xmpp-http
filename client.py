@@ -86,19 +86,22 @@ async def handle(request):
     "Handle the HTTP request and block until the vcard is fetched"
     err_404 = web.Response(status=404, text='Not found')
     body = await  request.json()
+    print("should send messages for "+str(len(body)))
   #  for message in body:
    #     print(message['notification'])
 
     fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
     if not XMPP[fcm_sender_id].is_connected():
         XMPP[fcm_sender_id].reconnect()
+    count = 0
     for message in body:
-        print(message)
+        count += 1
         try:
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
         except Exception as e:
             print(e)
+            print("failed sending message for "+str(count))
             return err_404
 
 
