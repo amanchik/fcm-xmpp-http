@@ -17,8 +17,7 @@ Then you can do a post request to start sending push notifications.
 
 POST http://127.0.0.1:8768/fcm_sender_id
 
-`[{ "notification": {"title": "sample title","body": "new message 2","sound":"default"},"to" : "fcm_device_token","message_id":"123458846_478299338","priority":"high","delivery_receipt_requested":true}]
-`
+`[{ "notification": {"title": "sample title 1","body": "sample body 1","sound":"default"},"to" : "fcm_device_token","message_id":"123458846_478299338","priority":"high","delivery_receipt_requested":true},{ "notification": {"title": "sample title 2","body": "sample body 2","sound":"default"},"to" : "fcm_device_token","message_id":"123458846_478299338","priority":"high","delivery_receipt_requested":true}]`
 
 
 Run following to check notification status.
