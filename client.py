@@ -90,7 +90,6 @@ async def handle(request):
    #     print(message['notification'])
 
     fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
-    FCM("","").connection_lost()
     if not XMPP[fcm_sender_id].is_connected():
         XMPP[fcm_sender_id].reconnect()
     for message in body:
