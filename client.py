@@ -15,6 +15,7 @@ import asyncio
 from aiohttp import web
 import redis
 XMPP = {}
+app_keys = {}
 message_senders ={}
 failure_reasons ={'DEVICE_UNREGISTERED':1,'BAD_REGISTRATION':2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
@@ -87,10 +88,11 @@ async def handle(request):
   #  for message in body:
    #     print(message['notification'])
 
+    fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
 
-   
+    if not XMPP[fcm_sender_id].is_connected():
+        XMPP[fcm_sender_id].reconnect()
     try:
-        fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
         for message in body:
             message_senders[message['message_id']]=fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
@@ -120,6 +122,7 @@ def main(namespace):
     loop.run_until_complete(init(loop, namespace.host, namespace.port))
 
     for x  in data:
+        app_keys[x['app_id']] = x['app_key']
         XMPP[x['app_id']] = FCM(x['app_id'],x['app_key'])
     # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
         XMPP[x['app_id']].start()
