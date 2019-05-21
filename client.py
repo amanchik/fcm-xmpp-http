@@ -10,15 +10,16 @@ log = logging.getLogger(__name__)
 import requests
 import datetime
 import time
-
 import asyncio
 from aiohttp import web
 import redis
+import queue
 XMPP = {}
 app_keys = {}
 message_senders ={}
 failure_reasons ={'DEVICE_UNREGISTERED':1,'BAD_REGISTRATION':2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
+q = queue.Queue()
 
 
 class FCM(ClientXMPP):
@@ -44,19 +45,20 @@ class FCM(ClientXMPP):
         if msg['type'] in ('chat', 'normal'):
             msg.reply("Thanks for sending\n%(body)s" % msg).send()
     def fcm_message(self, data):
-        print(data)
+     #   print(data)
         y = BeautifulSoup(str(data),features='html.parser')
-        print(y.message.gcm.text)
+     #   print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
 
-        print(obj)
+    #    print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
             r.set(look_for,json.dumps({'online_notification_sent_at':int(time.time()),'message_id':obj['message_id']}))
             if 'from' in obj:
                 ack = {'to':obj['from'],'message_id':obj['message_id'],'message_type':'ack'}
-                XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
+                if obj['message_id'] in message_senders:
+                    XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],'error':obj['error']}
             if obj['error'] in failure_reasons:
@@ -82,27 +84,46 @@ class FCM(ClientXMPP):
         self.connected_future = asyncio.Future()
 
 
+async def run_job(request):
+    for fcm_sender_id in app_keys:
+        XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
+    # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
+        XMPP[fcm_sender_id].start()
+    # XMPP.connect()
+        XMPP[fcm_sender_id].reset_future()
+
+    return web.Response(text="done")
+
 async def handle(request):
     "Handle the HTTP request and block until the vcard is fetched"
     err_404 = web.Response(status=404, text='Not found')
     body = await  request.json()
-    print("should send messages for "+str(len(body)))
+    print("should send messages fo  r "+str(len(body)))
   #  for message in body:
    #     print(message['notification'])
 
     fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
-    if not XMPP[fcm_sender_id].is_connected():
-        XMPP[fcm_sender_id].reconnect()
-    count = 0
+   # if not XMPP[fcm_sender_id].is_connected():
+   #     XMPP[fcm_sender_id].reconnect()
+    #count = 0
     for message in body:
-        count += 1
-        try:
-            message_senders[message['message_id']] = fcm_sender_id
+        if XMPP[fcm_sender_id].is_connected():
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-        except Exception as e:
-            print(e)
-            print("failed sending message for "+str(count))
-            return err_404
+        else:
+            XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
+            XMPP[fcm_sender_id].start()
+            XMPP[fcm_sender_id].reset_future()
+            time.sleep(1)
+            XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+     #   q.put({'id':fcm_sender_id,'message':message})
+        # count += 1
+        #try:
+         #   message_senders[message['message_id']] = fcm_sender_id
+        #    XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+     #   except Exception as e:
+      #      print(e)
+       #     print("failed sending message for "+str(count))
+        #    return err_404
 
 
     return web.Response(text="done")
@@ -112,6 +133,7 @@ async def init(loop, host: str, port: str):
     app = web.Application(loop=loop)
 
     app.router.add_route('POST', '/{fcm_sender_id}', handle)
+    app.router.add_route('GET', '/restart/connections', run_job)
     srv = await loop.create_server(app.make_handler(), host, port)
     log.info("Server started at http://%s:%s", host, port)
     return srv
