@@ -113,7 +113,7 @@ async def handle(request):
             XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
             XMPP[fcm_sender_id].start()
             XMPP[fcm_sender_id].reset_future()
-            time.sleep(1)
+            time.sleep(4)
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
      #   q.put({'id':fcm_sender_id,'message':message})
         # count += 1
