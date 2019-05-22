@@ -13,13 +13,11 @@ import time
 import asyncio
 from aiohttp import web
 import redis
-import queue
 XMPP = {}
 app_keys = {}
 message_senders ={}
 failure_reasons ={'DEVICE_UNREGISTERED':1,'BAD_REGISTRATION':2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
-q = queue.Queue()
 
 
 class FCM(ClientXMPP):
@@ -82,20 +80,7 @@ class FCM(ClientXMPP):
     def reset_future(self):
         "Reset the future in case of disconnection"
         self.connected_future = asyncio.Future()
-async def run_pending_jobs(request):
-    print(q.qsize())
-    while not q.empty():
-        msg = q.get(block=False)
-        if msg and XMPP[msg['id']].is_connected():
-            XMPP[msg['id']].fcm_send(json.dumps(msg['message']))
-        else:
-            XMPP[msg['id']] = FCM(msg['id'], app_keys[msg['id']])
-            XMPP[msg['id']].start()
-            XMPP[msg['id']].reset_future()
-            q.put(msg)
-            break
 
-    return web.Response(text="done")
 
 async def run_job(request):
     for fcm_sender_id in app_keys:
@@ -125,7 +110,6 @@ async def handle(request):
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
         else:
             disconnected_end = True
-            q.put({'id': fcm_sender_id, 'message': message})
     if disconnected_end:
         XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
         XMPP[fcm_sender_id].start()
@@ -150,7 +134,6 @@ async def init(loop, host: str, port: str):
 
     app.router.add_route('POST', '/{fcm_sender_id}', handle)
     app.router.add_route('GET', '/restart/connections', run_job)
-    app.router.add_route('GET', '/finish', run_pending_jobs)
     srv = await loop.create_server(app.make_handler(), host, port)
     log.info("Server started at http://%s:%s", host, port)
     return srv
