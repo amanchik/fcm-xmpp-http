@@ -15,14 +15,14 @@ import time
 import asyncio
 from aiohttp import web
 import redis
-
+import queue
 XMPP = {}
 app_keys = {}
 message_senders = {}
 failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 
-
+q = queue.Queue()
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
@@ -85,7 +85,26 @@ class FCM(ClientXMPP):
     def reset_future(self):
         "Reset the future in case of disconnection"
         self.connected_future = asyncio.Future()
-
+async def reconnect(request):
+    for fcm_sender_id in app_keys:
+        XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
+        # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
+        XMPP[fcm_sender_id].start()
+        # XMPP.connect()
+        XMPP[fcm_sender_id].reset_future()
+    return web.Response(text="done")
+async def restart_jobs(request):
+    while not q.empty():
+        msg = q.get(block=False)
+        fcm_sender_id = msg['id']
+        message=msg['message']
+        if XMPP[fcm_sender_id].is_connected():
+            message_senders[message['message_id']] = fcm_sender_id
+            XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+        else:
+            q.put({'id': fcm_sender_id, 'message': message})
+            break
+    return web.Response(text="done")
 
 async def handle(request):
     "Handle the HTTP request and block until the vcard is fetched"
@@ -95,21 +114,15 @@ async def handle(request):
     #     print(message['notification'])
 
     fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
-    if not XMPP[fcm_sender_id].is_connected():
-        XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
-        # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
-        XMPP[fcm_sender_id].start()
-        # XMPP.connect()
-        XMPP[fcm_sender_id].reset_future()
-        time.sleep(3)
+
+
     for message in body:
-        print(message)
-        try:
+        if XMPP[fcm_sender_id].is_connected():
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-        except Exception as e:
-            print(e)
-            return err_404
+        else:
+            q.put({'id':fcm_sender_id,'message':message})
+
 
     return web.Response(text="done")
 
@@ -119,6 +132,8 @@ async def init(loop, host: str, port: str):
     app = web.Application(loop=loop)
 
     app.router.add_route('POST', '/{fcm_sender_id}', handle)
+    app.router.add_route('GET', '/reconnect', reconnect)
+    app.router.add_route('GET', '/finish', restart_jobs)
     srv = await loop.create_server(app.make_handler(), host, port)
     log.info("Server started at http://%s:%s", host, port)
     return srv
