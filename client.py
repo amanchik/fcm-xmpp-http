@@ -83,6 +83,7 @@ class FCM(ClientXMPP):
         "Reset the future in case of disconnection"
         self.connected_future = asyncio.Future()
 async def run_pending_jobs(request):
+    print(q.qsize())
     while not q.empty():
         msg = q.get(block=False)
         if msg and XMPP[msg['id']].is_connected():
