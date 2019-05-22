@@ -94,11 +94,14 @@ async def reconnect(request):
         XMPP[fcm_sender_id].reset_future()
     return web.Response(text="done")
 async def restart_jobs(request):
+    count = 0
     while not q.empty():
+        count += 1
         msg = q.get(block=False)
         fcm_sender_id = msg['id']
         message=msg['message']
         if XMPP[fcm_sender_id].is_connected():
+            print("sending count "+str(count))
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
         else:
