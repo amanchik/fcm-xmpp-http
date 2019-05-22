@@ -85,12 +85,13 @@ class FCM(ClientXMPP):
 async def run_pending_jobs(request):
     while True:
         msg = q.get(block=False)
-        if msg:
+        if msg and XMPP[msg['id']].is_connected():
             XMPP[msg['id']].fcm_send(json.dumps(msg['message']))
         else:
             XMPP[msg['id']] = FCM(msg['id'], app_keys[msg['id']])
             XMPP[msg['id']].start()
             XMPP[msg['id']].reset_future()
+            q.put(msg)
             break
 
     return web.Response(text="done")
