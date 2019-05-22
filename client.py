@@ -106,6 +106,7 @@ async def handle(request):
     #count = 0
     disconnected_end = False
     for message in body:
+        message_senders[message['message_id']] = fcm_sender_id
         if XMPP[fcm_sender_id].is_connected():
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
         else:
