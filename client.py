@@ -21,7 +21,7 @@ app_keys = {}
 message_senders = {}
 failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
-
+sent_messages = 0
 q = queue.Queue()
 class FCM(ClientXMPP):
 
@@ -48,6 +48,7 @@ class FCM(ClientXMPP):
             msg.reply("Thanks for sending\n%(body)s" % msg).send()
 
     def fcm_message(self, data):
+        global sent_messages
         print(data)
         y = BeautifulSoup(str(data), features='html.parser')
         print(y.message.gcm.text)
@@ -57,12 +58,14 @@ class FCM(ClientXMPP):
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
+            sent_messages -= 1
             r.set(look_for,
                   json.dumps({'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}))
             if 'from' in obj:
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
+            sent_messages -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
             if obj['error'] in failure_reasons:
@@ -94,22 +97,25 @@ async def reconnect(request):
         XMPP[fcm_sender_id].reset_future()
     return web.Response(text="done")
 async def restart_jobs(request):
+    global sent_messages, XMPP
     count = 0
     while not q.empty():
         count += 1
         msg = q.get(block=False)
         fcm_sender_id = msg['id']
         message=msg['message']
-        if XMPP[fcm_sender_id].is_connected():
-            print("sending count "+str(count))
+        if XMPP[fcm_sender_id].is_connected() and sent_messages<=100:
+            print("sending count "+str(sent_messages))
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+            sent_messages += 1
         else:
             q.put({'id': fcm_sender_id, 'message': message})
             break
     return web.Response(text="done")
 
 async def handle(request):
+    global sent_messages,XMPP
     "Handle the HTTP request and block until the vcard is fetched"
     err_404 = web.Response(status=404, text='Not found')
     body = await  request.json()
@@ -120,9 +126,11 @@ async def handle(request):
 
 
     for message in body:
-        if XMPP[fcm_sender_id].is_connected():
+        if XMPP[fcm_sender_id].is_connected() and sent_messages<=100:
+            print("sending count " + str(sent_messages))
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+            sent_messages += 1
         else:
             q.put({'id':fcm_sender_id,'message':message})
 
