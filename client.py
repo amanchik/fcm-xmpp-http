@@ -96,7 +96,12 @@ async def handle(request):
 
     fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
     if not XMPP[fcm_sender_id].is_connected():
-        XMPP[fcm_sender_id].reconnect()
+        XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
+        # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
+        XMPP[fcm_sender_id].start()
+        # XMPP.connect()
+        XMPP[fcm_sender_id].reset_future()
+        time.sleep(3)
     for message in body:
         print(message)
         try:
