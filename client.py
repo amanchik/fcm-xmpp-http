@@ -21,7 +21,7 @@ app_keys = {}
 message_senders = {}
 failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
-sent_messages = 0
+sent_messages = {}
 q = queue.Queue()
 class FCM(ClientXMPP):
 
@@ -58,12 +58,12 @@ class FCM(ClientXMPP):
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
-            sent_messages -= 1
             r.set(look_for,
                   json.dumps({'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}))
             if 'from' in obj:
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
+                sent_messages[message_senders[obj['message_id']]] -= 1
         elif obj['message_type'] == 'nack':
             sent_messages -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
@@ -109,11 +109,11 @@ async def restart_jobs(request):
             msg = json.loads(raw_msg.decode('utf-8'))
             fcm_sender_id = msg['id']
             message=msg['message']
-            if XMPP[fcm_sender_id].is_connected() and sent_messages<=10000:
-                print("sending count "+str(sent_messages))
+            if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=10000:
+                print("sending count "+str(sent_messages[fcm_sender_id]))
                 message_senders[message['message_id']] = fcm_sender_id
                 XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-                sent_messages += 1
+                sent_messages[fcm_sender_id] += 1
             else:
                 if not XMPP[fcm_sender_id].is_connected():
                     print("not connected")
@@ -138,11 +138,11 @@ async def handle(request):
 
 
     for message in body:
-        if XMPP[fcm_sender_id].is_connected() and sent_messages<=10000:
-            print("sending count " + str(sent_messages))
+        if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id] <= 10000:
+            print("sending count " + str(sent_messages[fcm_sender_id]))
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-            sent_messages += 1
+            sent_messages[fcm_sender_id] += 1
         else:
             r.rpush("all_messages",json.dumps({'id':fcm_sender_id,'message':message}))
 
@@ -167,7 +167,7 @@ def main(namespace):
     response = requests.get(os.environ['APP_URL'])
     data = response.json()
     loop = asyncio.get_event_loop()
-    global XMPP
+    global XMPP,sent_messages
     loop.run_until_complete(init(loop, namespace.host, namespace.port))
 
     for x in data:
@@ -177,6 +177,7 @@ def main(namespace):
         XMPP[x['app_id']].start()
         # XMPP.connect()
         XMPP[x['app_id']].reset_future()
+        sent_messages[x['app_id']]=0
     for x in data:
         loop.run_until_complete(XMPP[x['app_id']].connected_future)
 
