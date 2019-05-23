@@ -89,9 +89,10 @@ class FCM(ClientXMPP):
         "Reset the future in case of disconnection"
         self.connected_future = asyncio.Future()
 async def reconnect(request):
-    global XMPP
+    global XMPP,sent_messages
     for fcm_sender_id in app_keys:
         if not XMPP[fcm_sender_id].is_connected():
+            sent_messages[fcm_sender_id]=0
             XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
             # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
             XMPP[fcm_sender_id].start()
