@@ -58,14 +58,14 @@ class FCM(ClientXMPP):
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
+            sent_messages[message_senders[obj['message_id']]] -= 1
             r.set(look_for,
                   json.dumps({'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}))
             if 'from' in obj:
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
-                sent_messages[message_senders[obj['message_id']]] -= 1
         elif obj['message_type'] == 'nack':
-            sent_messages -= 1
+            sent_messages[message_senders[obj['message_id']]] -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
             if obj['error'] in failure_reasons:
