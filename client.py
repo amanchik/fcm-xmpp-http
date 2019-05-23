@@ -89,28 +89,40 @@ class FCM(ClientXMPP):
         "Reset the future in case of disconnection"
         self.connected_future = asyncio.Future()
 async def reconnect(request):
+    global XMPP
     for fcm_sender_id in app_keys:
-        XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
-        # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
-        XMPP[fcm_sender_id].start()
-        # XMPP.connect()
-        XMPP[fcm_sender_id].reset_future()
+        if not XMPP[fcm_sender_id].is_connected():
+            XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
+            # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
+            XMPP[fcm_sender_id].start()
+            # XMPP.connect()
+            XMPP[fcm_sender_id].reset_future()
     return web.Response(text="done")
 async def restart_jobs(request):
     global sent_messages, XMPP
     count = 0
-    while not q.empty():
+    while True:
         count += 1
-        msg = q.get(block=False)
-        fcm_sender_id = msg['id']
-        message=msg['message']
-        if XMPP[fcm_sender_id].is_connected() and sent_messages<=100:
-            print("sending count "+str(sent_messages))
-            message_senders[message['message_id']] = fcm_sender_id
-            XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-            sent_messages += 1
+        print("counting "+str(count))
+        raw_msg = r.rpop("all_messages")
+        if raw_msg:
+            msg = json.loads(raw_msg.decode('utf-8'))
+            fcm_sender_id = msg['id']
+            message=msg['message']
+            if XMPP[fcm_sender_id].is_connected() and sent_messages<=10000:
+                print("sending count "+str(sent_messages))
+                message_senders[message['message_id']] = fcm_sender_id
+                XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+                sent_messages += 1
+            else:
+                if not XMPP[fcm_sender_id].is_connected():
+                    print("not connected")
+                else:
+                    print("more than 100")
+                r.rpush("all_messages",json.dumps(msg))
+                break
         else:
-            q.put({'id': fcm_sender_id, 'message': message})
+            print("no more messages")
             break
     return web.Response(text="done")
 
@@ -126,13 +138,13 @@ async def handle(request):
 
 
     for message in body:
-        if XMPP[fcm_sender_id].is_connected() and sent_messages<=100:
+        if XMPP[fcm_sender_id].is_connected() and sent_messages<=10000:
             print("sending count " + str(sent_messages))
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
             sent_messages += 1
         else:
-            q.put({'id':fcm_sender_id,'message':message})
+            r.rpush("all_messages",json.dumps({'id':fcm_sender_id,'message':message}))
 
 
     return web.Response(text="done")
