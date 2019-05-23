@@ -110,7 +110,7 @@ async def restart_jobs(request):
             msg = json.loads(raw_msg.decode('utf-8'))
             fcm_sender_id = msg['id']
             message=msg['message']
-            if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=10000:
+            if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=100:
                 print("sending count "+str(sent_messages[fcm_sender_id]))
                 message_senders[message['message_id']] = fcm_sender_id
                 XMPP[fcm_sender_id].fcm_send(json.dumps(message))
@@ -139,7 +139,7 @@ async def handle(request):
 
 
     for message in body:
-        if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id] <= 10000:
+        if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id] <= 100:
             print("sending count " + str(sent_messages[fcm_sender_id]))
             message_senders[message['message_id']] = fcm_sender_id
             XMPP[fcm_sender_id].fcm_send(json.dumps(message))
