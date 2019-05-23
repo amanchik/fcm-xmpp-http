@@ -113,8 +113,12 @@ async def restart_jobs(request):
             if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=100:
                 print("sending count "+str(sent_messages[fcm_sender_id]))
                 message_senders[message['message_id']] = fcm_sender_id
-                XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-                sent_messages[fcm_sender_id] += 1
+                try:
+                    XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+                    sent_messages[fcm_sender_id] += 1
+                except Exception as e:
+                    print(e)
+                    r.rpush("all_messages", json.dumps(msg))
             else:
                 if not XMPP[fcm_sender_id].is_connected():
                     print("not connected")
@@ -142,8 +146,12 @@ async def handle(request):
         if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id] <= 100:
             print("sending count " + str(sent_messages[fcm_sender_id]))
             message_senders[message['message_id']] = fcm_sender_id
-            XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-            sent_messages[fcm_sender_id] += 1
+            try:
+                XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+                sent_messages[fcm_sender_id] += 1
+            except Exception as e:
+                print(e)
+                r.rpush("all_messages", json.dumps({'id': fcm_sender_id, 'message': message}))
         else:
             r.rpush("all_messages",json.dumps({'id':fcm_sender_id,'message':message}))
 
