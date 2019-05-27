@@ -59,8 +59,10 @@ class FCM(ClientXMPP):
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
             sent_messages[message_senders[obj['message_id']]] -= 1
+            op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
+            r.publish("reports",json.dumps({'id':look_for,'data':op}))
             r.set(look_for,
-                  json.dumps({'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}))
+                  json.dumps(op))
             if 'from' in obj:
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
@@ -72,12 +74,15 @@ class FCM(ClientXMPP):
                 op['failure_reason'] = failure_reasons[obj['error']]
             else:
                 op['failure_reason'] = 3
+            r.publish("reports", json.dumps({'id': look_for, 'data': op}))
             r.set(look_for,
                   json.dumps(op))
         elif obj['message_type'] == 'receipt':
             look_for = today + '_message_' + obj['message_id'][4:]
+            op = {'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}
+            r.publish("reports", json.dumps({'id': look_for, 'data': op}))
             r.set(look_for,
-                  json.dumps({'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}))
+                  json.dumps(op))
 
     def start(self):
         self.connect(address=('fcm-xmpp.googleapis.com', 5235), use_ssl=True, disable_starttls=False)
