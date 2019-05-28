@@ -23,6 +23,7 @@ failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 sent_messages = {}
 q = queue.Queue()
+max_message_limit = 10000
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
@@ -105,8 +106,11 @@ async def reconnect(request):
             XMPP[fcm_sender_id].reset_future()
     return web.Response(text="done")
 async def restart_jobs(request):
-    global sent_messages, XMPP
+    global sent_messages, XMPP,max_message_limit
     count = 0
+    reconnected_sent = {}
+    for key in app_keys:
+        reconnected_sent[key]=False
     while True:
         count += 1
         print("counting "+str(count))
@@ -115,7 +119,7 @@ async def restart_jobs(request):
             msg = json.loads(raw_msg.decode('utf-8'))
             fcm_sender_id = msg['id']
             message=msg['message']
-            if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=100:
+            if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=max_message_limit:
                 print("sending count "+str(sent_messages[fcm_sender_id]))
                 message_senders[message['message_id']] = fcm_sender_id
                 try:
@@ -127,7 +131,16 @@ async def restart_jobs(request):
             else:
                 if not XMPP[fcm_sender_id].is_connected():
                     print("not connected")
+                    if not reconnected_sent[fcm_sender_id]:
+                        sent_messages[fcm_sender_id] = 0
+                        XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
+                        # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
+                        XMPP[fcm_sender_id].start()
+                        # XMPP.connect()
+                        XMPP[fcm_sender_id].reset_future()
+                        reconnected_sent[fcm_sender_id] = True
                 else:
+                    reconnected_sent[fcm_sender_id]=False
                     print("more than 100")
                 r.rpush("all_messages",json.dumps(msg))
                 break
@@ -137,7 +150,7 @@ async def restart_jobs(request):
     return web.Response(text="done")
 
 async def handle(request):
-    global sent_messages,XMPP
+    global sent_messages,XMPP,max_message_limit
     "Handle the HTTP request and block until the vcard is fetched"
     err_404 = web.Response(status=404, text='Not found')
     body = await  request.json()
@@ -148,7 +161,7 @@ async def handle(request):
 
 
     for message in body:
-        if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id] <= 100:
+        if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id] <= max_message_limit:
             print("sending count " + str(sent_messages[fcm_sender_id]))
             message_senders[message['message_id']] = fcm_sender_id
             try:
