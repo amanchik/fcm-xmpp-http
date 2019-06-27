@@ -124,6 +124,8 @@ async def restart_jobs(request):
                 message_senders[message['message_id']] = fcm_sender_id
                 try:
                     XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+                    op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
+                    r.publish("reports", json.dumps({'id': message['message_id'], 'data': op}))
                     sent_messages[fcm_sender_id] += 1
                 except Exception as e:
                     print(e)
@@ -166,6 +168,8 @@ async def handle(request):
             message_senders[message['message_id']] = fcm_sender_id
             try:
                 XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+                op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
+                r.publish("reports", json.dumps({'id': message['message_id'], 'data': op}))
                 sent_messages[fcm_sender_id] += 1
             except Exception as e:
                 print(e)
