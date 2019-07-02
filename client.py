@@ -23,7 +23,7 @@ failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 sent_messages = {}
 q = queue.Queue()
-max_message_limit = 100
+max_message_limit = 10000
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
