@@ -128,6 +128,9 @@ while True:
             except Exception as e:
                 print(e)
                 r.rpush("all_messages", json.dumps(msg))
+        else:
+            r.rpush("all_messages", json.dumps(msg))
+
     else:
         print("no more messages")
         break
