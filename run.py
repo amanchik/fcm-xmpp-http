@@ -23,7 +23,7 @@ failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 sent_messages = {}
 q = queue.Queue()
-max_message_limit = 10000
+max_message_limit = 100
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
@@ -132,7 +132,7 @@ while True:
         else:
             if fcm_sender_id in XMPP and not XMPP[fcm_sender_id].is_connected():
                 print(fcm_sender_id+" not connected")
-            if sent_messages[fcm_sender_id]<=max_message_limit:
+            if sent_messages[fcm_sender_id]>=max_message_limit:
                 print(fcm_sender_id + " is above limit")
             r.rpush("all_messages", json.dumps(msg))
 
