@@ -106,9 +106,10 @@ def reconnect():
             XMPP[fcm_sender_id].reset_future()
 response = requests.get(os.environ['APP_URL'])
 data = response.json()
-
+count = 0
 while True:
-    print("coming here")
+    count += 1
+    print("coming here"+str(count))
     raw_msg = r.rpop("all_messages")
     if raw_msg:
         reconnect()
@@ -134,7 +135,8 @@ while True:
     else:
         print("no more messages")
         break
-
+    if count > 100000:
+        break
 
 
 
