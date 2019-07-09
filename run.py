@@ -135,7 +135,7 @@ while True:
     else:
         print("no more messages")
         break
-    if count > 100000:
+    if count > 10000:
         break
 
 
