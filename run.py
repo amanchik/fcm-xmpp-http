@@ -128,6 +128,10 @@ while True:
                 print(e)
                 r.rpush("all_messages", json.dumps(msg))
         else:
+            if fcm_sender_id in XMPP and not XMPP[fcm_sender_id].is_connected():
+                print(fcm_sender_id+" not connected")
+            if sent_messages[fcm_sender_id]<=max_message_limit:
+                print(fcm_sender_id + " is above limit")
             r.rpush("all_messages", json.dumps(msg))
 
     else:
