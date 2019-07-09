@@ -107,8 +107,16 @@ def reconnect():
 response = requests.get(os.environ['APP_URL'])
 data = response.json()
 print(data)
+
 for x in data:
+    app_keys[x['app_id']] = x['app_key']
+    XMPP[x['app_id']] = FCM(x['app_id'], x['app_key'])
+    # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
+    XMPP[x['app_id']].start()
+    # XMPP.connect()
+    XMPP[x['app_id']].reset_future()
     sent_messages[x['app_id']] = 0
+
 count = 0
 while True:
     count += 1
