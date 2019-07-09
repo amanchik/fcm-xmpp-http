@@ -109,7 +109,6 @@ data = response.json()
 count = 0
 while True:
     count += 1
-    print("coming here"+str(count))
     raw_msg = r.rpop("all_messages")
     if raw_msg:
         reconnect()
@@ -117,7 +116,6 @@ while True:
         fcm_sender_id = msg['id']
         message=msg['message']
         if fcm_sender_id in XMPP and XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=max_message_limit:
-            print("sending count "+str(sent_messages[fcm_sender_id]))
             message_senders[message['message_id']] = fcm_sender_id
             try:
                 XMPP[fcm_sender_id].fcm_send(json.dumps(message))
