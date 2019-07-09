@@ -97,7 +97,7 @@ class FCM(ClientXMPP):
 def reconnect():
     global XMPP,sent_messages
     for fcm_sender_id in app_keys:
-        if not XMPP[fcm_sender_id].is_connected() or  sent_messages[fcm_sender_id]>=max_message_limit:
+        if fcm_sender_id not in XMPP or  not XMPP[fcm_sender_id].is_connected() or  sent_messages[fcm_sender_id]>=max_message_limit:
             sent_messages[fcm_sender_id]=0
             XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
             # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
