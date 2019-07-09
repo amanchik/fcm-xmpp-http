@@ -106,6 +106,8 @@ def reconnect():
             XMPP[fcm_sender_id].reset_future()
 response = requests.get(os.environ['APP_URL'])
 data = response.json()
+for x in data:
+    sent_messages[x['app_id']] = 0
 count = 0
 while True:
     count += 1
