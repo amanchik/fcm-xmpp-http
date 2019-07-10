@@ -130,7 +130,7 @@ class FCM(ClientXMPP):
 
 loop = asyncio.get_event_loop()
 
-conn = FCM(os.environ['SENDER_ID'],os.environ['SERVER_KEY'])
+conn = FCM(sys.argv[1],sys.argv[2])
 conn.start()
 conn.reset_future()
 
