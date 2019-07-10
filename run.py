@@ -58,6 +58,7 @@ class FCM(ClientXMPP):
                 msg = json.loads(raw_msg.decode('utf-8'))
                 message = msg['message']
                 try:
+                    print("sending message with id "+message['message_id'])
                     self.fcm_send(json.dumps(message))
                     today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
                     look_for = today + '_status_' + message['message_id']
