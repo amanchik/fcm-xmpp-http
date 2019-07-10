@@ -12,4 +12,4 @@ for x in data:
     if flen>0:
         os.system("python run.py "+sender_id+" "+server_key)
     else:
-        print("no messages for "+str(flen))
+        print("no messages for "+str(sender_id))
