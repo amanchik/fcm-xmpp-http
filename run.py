@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import os
 import json
 import logging
+import sys
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ import queue
 XMPP = {}
 app_keys = {}
 message_senders = {}
+all_messages = {}
 failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 sent_messages = {}
@@ -27,8 +29,9 @@ max_message_limit = 100
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
-        print(sender_id)
-        print(server_key)
+        self.sender_id = sender_id
+        self.server_key = server_key
+        self.sent_count = 0
         ClientXMPP.__init__(self, sender_id + '@fcm.googleapis.com', server_key)
         self.default_port = 5235
         self.connected_future = asyncio.Future()
@@ -39,9 +42,39 @@ class FCM(ClientXMPP):
         )
 
     def session_start(self, event):
+        global all_messages
         print("start callback")
         self.send_presence()
         self.get_roster()
+
+        count = 0
+        while True:
+            if self.sent_count > 100:
+                print("sleeping for 5 seconds")
+                time.sleep(5)
+            count += 1
+            raw_msg = r.rpop(self.sender_id)
+            if raw_msg:
+                msg = json.loads(raw_msg.decode('utf-8'))
+                message = msg['message']
+                try:
+                    self.fcm_send(json.dumps(message))
+                    today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
+                    look_for = today + '_status_' + message['message_id']
+                    op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
+                    r.publish("reports", json.dumps({'id': look_for, 'data': op}))
+                    self.sent_count += 1
+                except Exception as e:
+                    print(e)
+                    r.rpush(self.sender_id, json.dumps(msg))
+            else:
+                print("no more messages")
+                sys.exit(0)
+            if count > 10000:
+                print("1000 reached")
+                sys.exit(0)
+
+
 
     def message(self, msg):
         print("got message")
@@ -59,16 +92,16 @@ class FCM(ClientXMPP):
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
-            sent_messages[message_senders[obj['message_id']]] -= 1
+            self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
             r.publish("reports",json.dumps({'id':look_for,'data':op}))
             r.set(look_for,
                   json.dumps(op))
             if 'from' in obj:
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
-                XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
+                self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
-            sent_messages[message_senders[obj['message_id']]] -= 1
+            self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
             if obj['error'] in failure_reasons:
@@ -94,67 +127,16 @@ class FCM(ClientXMPP):
     def reset_future(self):
         "Reset the future in case of disconnection"
         self.connected_future = asyncio.Future()
-def reconnect():
-    global XMPP,sent_messages
-    for fcm_sender_id in app_keys:
-        if fcm_sender_id not in XMPP or  not XMPP[fcm_sender_id].is_connected() or  sent_messages[fcm_sender_id]>=max_message_limit:
-            sent_messages[fcm_sender_id]=0
-            XMPP[fcm_sender_id] = FCM(fcm_sender_id, app_keys[fcm_sender_id])
-            # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
-            XMPP[fcm_sender_id].start()
-            # XMPP.connect()
-            XMPP[fcm_sender_id].reset_future()
-response = requests.get(os.environ['APP_URL'])
-data = response.json()
-print(data)
 
-for x in data:
-    app_keys[x['app_id']] = x['app_key']
-    XMPP[x['app_id']] = FCM(x['app_id'], x['app_key'])
-    # XMPP= FCM(os.environ['FCM_SENDER_ID'], os.environ['FCM_SERVER_KEY'])
-    XMPP[x['app_id']].start()
-    # XMPP.connect()
-    XMPP[x['app_id']].reset_future()
-    sent_messages[x['app_id']] = 0
+loop = asyncio.get_event_loop()
 
-count = 0
-while True:
-    count += 1
-    raw_msg = r.rpop("all_messages")
-    if raw_msg:
-        reconnect()
-        msg = json.loads(raw_msg.decode('utf-8'))
-        fcm_sender_id = msg['id']
-        message=msg['message']
-        if fcm_sender_id in XMPP and XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=max_message_limit:
-            message_senders[message['message_id']] = fcm_sender_id
-            try:
-                XMPP[fcm_sender_id].fcm_send(json.dumps(message))
-                today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
-                look_for = today + '_status_' + message['message_id']
-                op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
-                r.publish("reports", json.dumps({'id': look_for, 'data': op}))
-                sent_messages[fcm_sender_id] += 1
-            except Exception as e:
-                print(e)
-                r.rpush("all_messages", json.dumps(msg))
-        else:
-            if fcm_sender_id not in XMPP:
-                print(fcm_sender_id+" not in XMPP")
-            elif  not XMPP[fcm_sender_id].is_connected():
-                print(fcm_sender_id+" not connected")
-            if fcm_sender_id not in sent_messages:
-                print(fcm_sender_id + " not in sent messages")
-            if sent_messages[fcm_sender_id]>=max_message_limit:
-                print(fcm_sender_id + " is above limit")
-            r.rpush("all_messages", json.dumps(msg))
+conn = FCM(os.environ['SENDER_ID'],os.environ['SERVER_KEY'])
+conn.start()
+conn.reset_future()
 
-    else:
-        print("no more messages")
-        break
-    if count > 10000:
-        print("10000 reached")
-        break
+loop.run_until_complete(conn.connected_future)
+
+
 
 
 
