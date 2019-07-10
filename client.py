@@ -23,7 +23,7 @@ failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 sent_messages = {}
 q = queue.Queue()
-max_message_limit = 10000
+max_message_limit = 100
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
@@ -58,6 +58,7 @@ class FCM(ClientXMPP):
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
+            self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
             r.publish("reports",json.dumps({'id':look_for,'data':op}))
             r.set(look_for,
@@ -66,6 +67,7 @@ class FCM(ClientXMPP):
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
+            self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
             if obj['error'] in failure_reasons:
@@ -116,7 +118,7 @@ async def restart_jobs(request):
             msg = json.loads(raw_msg.decode('utf-8'))
             fcm_sender_id = msg['id']
             message=msg['message']
-            if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id]<=max_message_limit:
+            if XMPP[fcm_sender_id].is_connected() and XMPP[fcm_sender_id].sent_count<=max_message_limit:
                 print("sending count "+str(sent_messages[fcm_sender_id]))
                 message_senders[message['message_id']] = fcm_sender_id
                 try:
@@ -162,21 +164,19 @@ async def handle(request):
 
 
     for message in body:
-        if XMPP[fcm_sender_id].is_connected() and sent_messages[fcm_sender_id] <= max_message_limit:
-            print("sending count " + str(sent_messages[fcm_sender_id]))
-            message_senders[message['message_id']] = fcm_sender_id
+        if XMPP[fcm_sender_id].is_connected() and XMPP[fcm_sender_id].sent_count <= max_message_limit:
             try:
                 XMPP[fcm_sender_id].fcm_send(json.dumps(message))
                 today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
                 look_for = today + '_status_' + message['message_id']
                 op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
                 r.publish("reports", json.dumps({'id': look_for, 'data': op}))
-                sent_messages[fcm_sender_id] += 1
+                XMPP[fcm_sender_id].sent_count += 1
             except Exception as e:
                 print(e)
-                r.rpush("all_messages", json.dumps({'id': fcm_sender_id, 'message': message}))
+                r.rpush(fcm_sender_id, json.dumps({'id': fcm_sender_id, 'message': message}))
         else:
-            r.rpush("all_messages",json.dumps({'id':fcm_sender_id,'message':message}))
+            r.rpush(fcm_sender_id,json.dumps({'id':fcm_sender_id,'message':message}))
 
 
     return web.Response(text="done")
