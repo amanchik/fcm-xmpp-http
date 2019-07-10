@@ -27,8 +27,7 @@ max_message_limit = 10000
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
-        print(sender_id)
-        print(server_key)
+        self.sent_count = 0
         ClientXMPP.__init__(self, sender_id + '@fcm.googleapis.com', server_key)
         self.default_port = 5235
         self.connected_future = asyncio.Future()
@@ -59,16 +58,14 @@ class FCM(ClientXMPP):
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
-            sent_messages[message_senders[obj['message_id']]] -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
             r.publish("reports",json.dumps({'id':look_for,'data':op}))
             r.set(look_for,
                   json.dumps(op))
             if 'from' in obj:
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
-                XMPP[message_senders[obj['message_id']]].fcm_send(json.dumps(ack))
+                self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
-            sent_messages[message_senders[obj['message_id']]] -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
             if obj['error'] in failure_reasons:
