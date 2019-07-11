@@ -69,7 +69,7 @@ class FCM(ClientXMPP):
                     print(e)
                     r.rpush(self.sender_id, json.dumps(msg))
             else:
-                print("no more messages")
+                print("no more messages "+str(self.sent_count))
                 time.sleep(2)
                 sys.exit(0)
             if count > 10000:
