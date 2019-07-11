@@ -109,10 +109,16 @@ conn.reset_future()
 
 def send_messages():
     global conn
-
-    if conn.sessionstarted:
-        print("session started")
-
+    start = time.time()
+    first_time = True
+    while not conn.sessionstarted:
+        if first_time:
+            print("session not started to sleeping")
+            time.sleep(10)
+            first_time = False
+        if time.time() - start >= 10:
+            print("10 seconds is too much to start the session so end")
+            sys.exit(0)
     count = 0
     start = time.time()
     while True:
