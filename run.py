@@ -45,6 +45,7 @@ class FCM(ClientXMPP):
     def session_start(self, event):
         global all_messages
         print("start callback")
+        sys.stdout.flush()
         self.send_presence()
         self.get_roster()
 
@@ -114,10 +115,12 @@ def send_messages():
     while not conn.sessionstarted:
         if first_time:
             print("session not started to sleeping")
+            sys.stdout.flush()
             time.sleep(10)
             first_time = False
         if time.time() - start >= 10:
             print("10 seconds is too much to start the session so end")
+            sys.stdout.flush()
             sys.exit(0)
     count = 0
     start = time.time()
@@ -125,11 +128,13 @@ def send_messages():
         count += 1
         if time.time() - start > 300:
             print("300 seconds so exit")
+            sys.stdout.flush()
             sys.exit(0)
         if not conn.sessionstarted:
             continue
         if conn.sent_count >= 100:
             print("sleeping for 5 seconds")
+            sys.stdout.flush()
             time.sleep(5)
         raw_msg = r.rpop(conn.sender_id)
         if raw_msg:
@@ -149,6 +154,7 @@ def send_messages():
                 r.rpush(conn.sender_id, json.dumps(msg))
         else:
             print("no more messages " + str(conn.sent_count))
+            sys.stdout.flush()
             if conn.sent_count == 0:
                 sys.exit(0)
             else:
