@@ -48,8 +48,9 @@ class FCM(ClientXMPP):
         self.get_roster()
 
         count = 0
+        start = time.time()
         while True:
-            if self.sent_count > 100:
+            if self.sent_count >= 100:
                 print("sleeping for 5 seconds")
                 time.sleep(5)
             count += 1
@@ -58,23 +59,24 @@ class FCM(ClientXMPP):
                 msg = json.loads(raw_msg.decode('utf-8'))
                 message = msg['message']
                 try:
-                    print("sending message with id "+message['message_id'])
+                #    print("sending message with id "+message['message_id'])
                     self.fcm_send(json.dumps(message))
-                    today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
-                    look_for = today + '_status_' + message['message_id']
-                    op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
-                    r.publish("reports", json.dumps({'id': look_for, 'data': op}))
+               #     today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
+              #      look_for = today + '_status_' + message['message_id']
+             #       op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
+            #        r.publish("reports", json.dumps({'id': look_for, 'data': op}))
                     self.sent_count += 1
                 except Exception as e:
                     print(e)
                     r.rpush(self.sender_id, json.dumps(msg))
             else:
                 print("no more messages "+str(self.sent_count))
-                time.sleep(2)
-                sys.exit(0)
-            if count > 10000:
-                print("1000 reached")
-                time.sleep(2)
+                if self.sent_count==0:
+                    sys.exit(0)
+                else:
+                    time.sleep(2)
+            if time.time()-start > 300:
+                print("300 seconds so exit")
                 sys.exit(0)
 
 
