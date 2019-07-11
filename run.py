@@ -110,8 +110,8 @@ conn.reset_future()
 def send_messages():
     global conn
 
-    if conn.is_connected():
-        print("connected")
+    if conn.sessionstarted:
+        print("session started")
 
     count = 0
     start = time.time()
