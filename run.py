@@ -156,6 +156,8 @@ def send_messages():
             except Exception as e:
                 print(e)
                 r.rpush(conn.sender_id, json.dumps(msg))
+                conn.reconnect()
+                time.sleep(2)
         else:
             print("no more messages " + str(conn.sent_count))
             sys.stdout.flush()
