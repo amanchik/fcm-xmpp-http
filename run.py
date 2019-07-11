@@ -142,7 +142,7 @@ def send_messages():
                 print(e)
                 r.rpush(conn.sender_id, json.dumps(msg))
         else:
-           # print("no more messages " + str(conn.sent_count))
+            print("no more messages " + str(conn.sent_count))
             if conn.sent_count == 0:
                 sys.exit(0)
             else:
