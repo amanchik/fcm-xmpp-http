@@ -128,16 +128,18 @@ def send_messages():
     start = time.time()
     while True:
         count += 1
-        if time.time() - start > 300:
-            print("300 seconds so exit")
-            sys.stdout.flush()
+
+        if not conn.is_connected():
+            print("not connected so die")
             kill_me()
-        if not conn.sessionstarted:
-            continue
-        if conn.sent_count >= 100:
-            print("sleeping for 5 seconds")
-            sys.stdout.flush()
-            kill_me()
+
+        while conn.sent_count >= 100:
+           time.sleep(1)
+           if time.time() - start > 300:
+               print("300 seconds so exit")
+               sys.stdout.flush()
+               kill_me()
+
         raw_msg = r.rpop(conn.sender_id)
         if raw_msg:
             msg = json.loads(raw_msg.decode('utf-8'))
