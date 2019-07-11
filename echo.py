@@ -53,6 +53,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)-8s %(message)s')
 
-    xmpp = EchoBot(os.environ('SENDER_ID')+'@example.com', os.environ('SERVER_KEY'))
+    xmpp = EchoBot(os.environ['SENDER_ID']+'@fcm.googleapis.com', os.environ['SERVER_KEY'])
     xmpp.connect(address=('fcm-xmpp.googleapis.com', 5235), use_ssl=True, disable_starttls=False)
     xmpp.process(forever=True)
