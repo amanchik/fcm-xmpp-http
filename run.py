@@ -6,6 +6,7 @@ import os
 import json
 import logging
 import sys
+from threading import Thread
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -47,37 +48,7 @@ class FCM(ClientXMPP):
         self.send_presence()
         self.get_roster()
 
-        count = 0
-        start = time.time()
-        while True:
-            if self.sent_count >= 100:
-                print("sleeping for 5 seconds")
-                time.sleep(5)
-            count += 1
-            raw_msg = r.rpop(self.sender_id)
-            if raw_msg:
-                msg = json.loads(raw_msg.decode('utf-8'))
-                message = msg['message']
-                try:
-                #    print("sending message with id "+message['message_id'])
-                    self.fcm_send(json.dumps(message))
-               #     today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
-              #      look_for = today + '_status_' + message['message_id']
-             #       op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
-            #        r.publish("reports", json.dumps({'id': look_for, 'data': op}))
-                    self.sent_count += 1
-                except Exception as e:
-                    print(e)
-                    r.rpush(self.sender_id, json.dumps(msg))
-            else:
-                print("no more messages "+str(self.sent_count))
-                if self.sent_count==0:
-                    sys.exit(0)
-                else:
-                    time.sleep(2)
-            if time.time()-start > 300:
-                print("300 seconds so exit")
-                sys.exit(0)
+
 
 
 
@@ -132,16 +103,61 @@ class FCM(ClientXMPP):
     def reset_future(self):
         "Reset the future in case of disconnection"
         self.connected_future = asyncio.Future()
-
-loop = asyncio.get_event_loop()
-
 conn = FCM(sys.argv[1],sys.argv[2])
 conn.start()
 conn.reset_future()
 
+def send_messages():
+    global conn
+
+    if conn.is_connected():
+        print("connected")
+
+    count = 0
+    start = time.time()
+    while True:
+        count += 1
+
+        if not conn.sessionstarted:
+            continue
+        if conn.sent_count >= 100:
+            print("sleeping for 5 seconds")
+            time.sleep(5)
+        raw_msg = r.rpop(conn.sender_id)
+        if raw_msg:
+            msg = json.loads(raw_msg.decode('utf-8'))
+            message = msg['message']
+            try:
+                #    print("sending message with id "+message['message_id'])
+                print(message)
+                conn.fcm_send(json.dumps(message))
+                #     today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
+                #      look_for = today + '_status_' + message['message_id']
+                #       op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
+                #        r.publish("reports", json.dumps({'id': look_for, 'data': op}))
+                conn.sent_count += 1
+            except Exception as e:
+                print(e)
+                r.rpush(conn.sender_id, json.dumps(msg))
+        else:
+           # print("no more messages " + str(conn.sent_count))
+            if conn.sent_count == 0:
+                sys.exit(0)
+            else:
+                time.sleep(2)
+        if time.time() - start > 300:
+            print("300 seconds so exit")
+            sys.exit(0)
+loop = asyncio.get_event_loop()
+
+
+thread1 = Thread( target=send_messages )
+thread1.start()
 loop.run_until_complete(conn.connected_future)
-
-
+try:
+    loop.run_forever()
+except KeyboardInterrupt:
+    import sys
 
 
 
