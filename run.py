@@ -117,7 +117,9 @@ def send_messages():
     start = time.time()
     while True:
         count += 1
-
+        if time.time() - start > 300:
+            print("300 seconds so exit")
+            sys.exit(0)
         if not conn.sessionstarted:
             continue
         if conn.sent_count >= 100:
@@ -145,9 +147,7 @@ def send_messages():
                 sys.exit(0)
             else:
                 time.sleep(2)
-        if time.time() - start > 300:
-            print("300 seconds so exit")
-            sys.exit(0)
+
 loop = asyncio.get_event_loop()
 
 
