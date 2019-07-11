@@ -126,6 +126,7 @@ def send_messages():
             kill_me()
     count = 0
     start = time.time()
+    failed = False
     while True:
         count += 1
 
@@ -139,6 +140,13 @@ def send_messages():
                print("300 seconds so exit")
                sys.stdout.flush()
                kill_me()
+        if failed:
+            while conn.sent_count > 0:
+                time.sleep(1)
+                if time.time() - start > 300:
+                    print("300 seconds so exit")
+                    sys.stdout.flush()
+                    kill_me()
 
         raw_msg = r.rpop(conn.sender_id)
         if raw_msg:
@@ -156,8 +164,7 @@ def send_messages():
             except Exception as e:
                 print(e)
                 r.rpush(conn.sender_id, json.dumps(msg))
-                conn.reconnect()
-                time.sleep(2)
+                failed = True
         else:
             print("no more messages " + str(conn.sent_count))
             sys.stdout.flush()
