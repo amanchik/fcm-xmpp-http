@@ -119,6 +119,7 @@ def send_messages():
             sys.stdout.flush()
             time.sleep(10)
             first_time = False
+            continue
         if time.time() - start >= 10:
             print("10 seconds is too much to start the session so end")
             sys.stdout.flush()
