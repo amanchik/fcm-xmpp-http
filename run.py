@@ -44,6 +44,7 @@ class FCM(ClientXMPP):
 
     def session_start(self, event):
         global all_messages
+        self.sessionstarted = True
         print("start callback")
         sys.stdout.flush()
         self.send_presence()
