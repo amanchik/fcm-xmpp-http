@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 import requests
 import datetime
 import time
-
+import os
 import asyncio
 from aiohttp import web
 import redis
@@ -121,7 +121,7 @@ def send_messages():
         if time.time() - start >= 10:
             print("10 seconds is too much to start the session so end")
             sys.stdout.flush()
-            sys.exit(0)
+            kill_me()
     count = 0
     start = time.time()
     while True:
@@ -129,13 +129,13 @@ def send_messages():
         if time.time() - start > 300:
             print("300 seconds so exit")
             sys.stdout.flush()
-            sys.exit(0)
+            kill_me()
         if not conn.sessionstarted:
             continue
         if conn.sent_count >= 100:
             print("sleeping for 5 seconds")
             sys.stdout.flush()
-            time.sleep(5)
+            kill_me()
         raw_msg = r.rpop(conn.sender_id)
         if raw_msg:
             msg = json.loads(raw_msg.decode('utf-8'))
@@ -156,10 +156,11 @@ def send_messages():
             print("no more messages " + str(conn.sent_count))
             sys.stdout.flush()
             if conn.sent_count == 0:
-                sys.exit(0)
+                kill_me()
             else:
                 time.sleep(2)
-
+def kill_me():
+    os._exit(0)
 loop = asyncio.get_event_loop()
 
 
