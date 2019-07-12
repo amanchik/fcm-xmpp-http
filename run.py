@@ -168,6 +168,7 @@ def send_messages():
                     conn.fcm_send(json.dumps(message))
                 else:
                     print("not connected so die")
+                    r.rpush(conn.sender_id, json.dumps(msg))
                     kill_me()
                 #     today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
                 #      look_for = today + '_status_' + message['message_id']
