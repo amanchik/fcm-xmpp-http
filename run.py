@@ -192,16 +192,17 @@ def send_messages():
                 time.sleep(2)
 def kill_me():
     os._exit(0)
-loop = asyncio.get_event_loop()
+#loop = asyncio.get_event_loop()
 
 
 thread1 = Thread( target=send_messages )
 thread1.start()
-loop.run_until_complete(conn.connected_future)
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    import sys
+conn.process(forever=True)
+#loop.run_until_complete(conn.connected_future)
+#try:
+ #   loop.run_forever()
+#except KeyboardInterrupt:
+  #  import sys
 
 
 
