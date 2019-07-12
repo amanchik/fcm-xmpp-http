@@ -30,6 +30,7 @@ max_message_limit = 100
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
+        self.draining = False
         self.sender_id = sender_id
         self.server_key = server_key
         self.sent_count = 0
@@ -61,12 +62,12 @@ class FCM(ClientXMPP):
 
     def fcm_message(self, data):
         global sent_messages
-        print(data)
+       # print(data)
         y = BeautifulSoup(str(data), features='html.parser')
-        print(y.message.gcm.text)
+     #   print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
 
-        print(obj)
+      #  print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
@@ -90,11 +91,16 @@ class FCM(ClientXMPP):
             r.set(look_for,
                   json.dumps(op))
         elif obj['message_type'] == 'receipt':
+            print("got receipt")
             look_for = today + '_message_' + obj['message_id'][4:]
             op = {'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}
             r.publish("reports", json.dumps({'id': look_for, 'data': op}))
             r.set(look_for,
                   json.dumps(op))
+        elif obj['message_type'] == 'control':
+            print("connection draining "+obj['control_type'])
+            self.draining = True
+
 
     def start(self):
         self.connect(address=('fcm-xmpp.googleapis.com', 5235), use_ssl=True, disable_starttls=False)
@@ -129,7 +135,8 @@ def send_messages():
     failed = False
     while True:
         count += 1
-
+        if conn.draining:
+            time.sleep(10)
         if not conn.is_connected():
             print("not connected so die")
             kill_me()
@@ -140,6 +147,7 @@ def send_messages():
                print("900 seconds so exit")
                sys.stdout.flush()
                kill_me()
+
 
         raw_msg = r.rpop(conn.sender_id)
         if raw_msg:
