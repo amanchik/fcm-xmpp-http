@@ -36,7 +36,7 @@ class FCM(ClientXMPP):
         self.sent_count = 0
         ClientXMPP.__init__(self, sender_id + '@fcm.googleapis.com', server_key)
         self.default_port = 5235
-        self.connected_future = asyncio.Future()
+      #  self.connected_future = asyncio.Future()
         self.add_event_handler("session_start", self.session_start)
         self.add_event_handler("message", self.message)
         self.register_handler(
@@ -115,12 +115,12 @@ class FCM(ClientXMPP):
     def fcm_send(self, payload):
         self.send_raw('<message><gcm xmlns="google:mobile:data">{0}</gcm></message>'.format(payload))
 
-    def reset_future(self):
+ #   def reset_future(self):
         "Reset the future in case of disconnection"
-        self.connected_future = asyncio.Future()
+  #      self.connected_future = asyncio.Future()
 conn = FCM(sys.argv[1],sys.argv[2])
 conn.start()
-conn.reset_future()
+#conn.reset_future()
 
 def send_messages():
     global conn
