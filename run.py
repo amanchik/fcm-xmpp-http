@@ -123,7 +123,7 @@ def send_messages():
         if first_time:
             print("session not started to sleeping")
             sys.stdout.flush()
-            time.sleep(10)
+            time.sleep(1)
             first_time = False
             continue
         if time.time() - start >= 10:
