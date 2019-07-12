@@ -134,19 +134,12 @@ def send_messages():
             print("not connected so die")
             kill_me()
 
-        while conn.sent_count >= 10:
+        while conn.sent_count > 0:
            time.sleep(1)
            if time.time() - start > 900:
                print("900 seconds so exit")
                sys.stdout.flush()
                kill_me()
-        if failed:
-            while conn.sent_count > 0:
-                time.sleep(1)
-                if conn.sent_count == 0 or time.time() - start > 300:
-                    print("300 seconds so exit")
-                    sys.stdout.flush()
-                    kill_me()
 
         raw_msg = r.rpop(conn.sender_id)
         if raw_msg:
@@ -165,6 +158,10 @@ def send_messages():
                 print(e)
                 r.rpush(conn.sender_id, json.dumps(msg))
                 failed = True
+            if failed:
+                print("failed so exit")
+                sys.stdout.flush()
+                kill_me()
         else:
             print("no more messages " + str(conn.sent_count))
             sys.stdout.flush()
