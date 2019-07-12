@@ -30,7 +30,7 @@ max_message_limit = 100
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
-        self.draining = False
+     #   self.draining = False
         self.sender_id = sender_id
         self.server_key = server_key
         self.sent_count = 0
@@ -99,7 +99,7 @@ class FCM(ClientXMPP):
                   json.dumps(op))
         elif obj['message_type'] == 'control':
             print("connection draining "+obj['control_type'])
-            self.draining = True
+          #  self.draining = True
 
 
     def start(self):
