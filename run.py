@@ -135,8 +135,8 @@ def send_messages():
     failed = False
     while True:
         count += 1
-        if conn.draining:
-            time.sleep(10)
+      #  if conn.draining:
+       #     time.sleep(10)
         if not conn.is_connected():
             print("not connected so die")
             kill_me()
