@@ -134,16 +134,16 @@ def send_messages():
             print("not connected so die")
             kill_me()
 
-        while conn.sent_count >= 100:
+        while conn.sent_count >= 10:
            time.sleep(1)
-           if time.time() - start > 300:
-               print("300 seconds so exit")
+           if time.time() - start > 900:
+               print("900 seconds so exit")
                sys.stdout.flush()
                kill_me()
         if failed:
             while conn.sent_count > 0:
                 time.sleep(1)
-                if time.time() - start > 300:
+                if conn.sent_count == 0 or time.time() - start > 300:
                     print("300 seconds so exit")
                     sys.stdout.flush()
                     kill_me()
