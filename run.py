@@ -30,7 +30,7 @@ max_message_limit = 100
 class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
-     #   self.draining = False
+        self.draining = False
         self.sender_id = sender_id
         self.server_key = server_key
         self.sent_count = 0
@@ -66,11 +66,13 @@ class FCM(ClientXMPP):
         y = BeautifulSoup(str(data), features='html.parser')
      #   print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
+      #  print(obj)
 
       #  print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
         look_for = today + '_status_' + obj['message_id']
         if obj['message_type'] == 'ack':
+            print("got ack")
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
             r.publish("reports",json.dumps({'id':look_for,'data':op}))
@@ -80,6 +82,7 @@ class FCM(ClientXMPP):
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
+            print("got nack")
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
@@ -99,7 +102,7 @@ class FCM(ClientXMPP):
                   json.dumps(op))
         elif obj['message_type'] == 'control':
             print("connection draining "+obj['control_type'])
-          #  self.draining = True
+            self.draining = True
 
 
     def start(self):
@@ -135,8 +138,8 @@ def send_messages():
     failed = False
     while True:
         count += 1
-      #  if conn.draining:
-       #     time.sleep(10)
+        if conn.draining:
+            time.sleep(10)
         if not conn.is_connected():
             print("not connected so die")
             kill_me()
