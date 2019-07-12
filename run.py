@@ -159,7 +159,11 @@ def send_messages():
             try:
                 #    print("sending message with id "+message['message_id'])
            #     print(message)
-                conn.fcm_send(json.dumps(message))
+                if conn.is_connected():
+                    conn.fcm_send(json.dumps(message))
+                else:
+                    print("not connected so die")
+                    kill_me()
                 #     today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
                 #      look_for = today + '_status_' + message['message_id']
                 #       op = {'online_notification_sent_at': int(time.time()), 'message_id': message['message_id']}
