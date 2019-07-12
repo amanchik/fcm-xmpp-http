@@ -155,7 +155,7 @@ def send_messages():
             message = msg['message']
             try:
                 #    print("sending message with id "+message['message_id'])
-                print(message)
+           #     print(message)
                 conn.fcm_send(json.dumps(message))
                 #     today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
                 #      look_for = today + '_status_' + message['message_id']
