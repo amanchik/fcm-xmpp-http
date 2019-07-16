@@ -157,6 +157,11 @@ def send_messages():
                sys.stdout.flush()
                kill_me()
 
+        if time.time() - start > 900:
+            print("900 seconds so exit")
+            sys.stdout.flush()
+            kill_me()
+
 
         raw_msg = r.rpop(conn.sender_id)
         if raw_msg:
