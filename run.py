@@ -44,7 +44,6 @@ class FCM(ClientXMPP):
         )
 
     def session_start(self, event):
-        global all_messages
         self.sessionstarted = True
         print("start callback")
         sys.stdout.flush()
@@ -61,7 +60,7 @@ class FCM(ClientXMPP):
             msg.reply("Thanks for sending\n%(body)s" % msg).send()
 
     def fcm_message(self, data):
-        global sent_messages
+        global all_messages
        # print(data)
         y = BeautifulSoup(str(data), features='html.parser')
      #   print(y.message.gcm.text)
@@ -75,6 +74,7 @@ class FCM(ClientXMPP):
             print("got ack")
             sys.stdout.flush()
             self.sent_count -= 1
+            del all_messages[obj['message_id']]
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
             r.publish("reports",json.dumps({'id':look_for,'data':op}))
             r.set(look_for,
@@ -88,6 +88,7 @@ class FCM(ClientXMPP):
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
+            del all_messages[obj['message_id']]
             if obj['error'] in failure_reasons:
                 op['failure_reason'] = failure_reasons[obj['error']]
             else:
@@ -165,6 +166,7 @@ def send_messages():
                 #    print("sending message with id "+message['message_id'])
            #     print(message)
                 if conn.is_connected():
+                    all_messages[message['message_id']]=msg
                     conn.fcm_send(json.dumps(message))
                 else:
                     print("not connected so die")
@@ -191,6 +193,8 @@ def send_messages():
             else:
                 time.sleep(2)
 def kill_me():
+    for x in all_messages:
+        r.rpush(conn.sender_id, json.dumps(all_messages[x]))
     os._exit(0)
 #loop = asyncio.get_event_loop()
 
