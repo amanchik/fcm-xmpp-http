@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import os
 import json
 import logging
-
+import sys
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 import requests
@@ -28,6 +28,7 @@ class FCM(ClientXMPP):
 
     def __init__(self, sender_id, server_key):
         self.sent_count = 0
+        self.draining = False
         ClientXMPP.__init__(self, sender_id + '@fcm.googleapis.com', server_key)
         self.default_port = 5235
         self.connected_future = asyncio.Future()
@@ -56,8 +57,9 @@ class FCM(ClientXMPP):
 
         print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
-        look_for = today + '_status_' + obj['message_id']
+
         if obj['message_type'] == 'ack':
+            look_for = today + '_status_' + obj['message_id']
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
             r.publish("reports",json.dumps({'id':look_for,'data':op}))
@@ -67,6 +69,7 @@ class FCM(ClientXMPP):
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
+            look_for = today + '_status_' + obj['message_id']
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
@@ -83,6 +86,12 @@ class FCM(ClientXMPP):
             r.publish("reports", json.dumps({'id': look_for, 'data': op}))
             r.set(look_for,
                   json.dumps(op))
+        elif obj['message_type'] == 'control':
+            print("connection draining " + obj['control_type'])
+            sys.stdout.flush()
+            self.draining = True
+            self.reconnect()
+            
 
     def start(self):
         self.connect(address=('fcm-xmpp.googleapis.com', 5235), use_ssl=True, disable_starttls=False)

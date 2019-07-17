@@ -69,8 +69,9 @@ class FCM(ClientXMPP):
 
       #  print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
-        look_for = today + '_status_' + obj['message_id']
+
         if obj['message_type'] == 'ack':
+            look_for = today + '_status_' + obj['message_id']
             print("got ack")
             sys.stdout.flush()
             self.sent_count -= 1
@@ -83,6 +84,7 @@ class FCM(ClientXMPP):
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
+            look_for = today + '_status_' + obj['message_id']
             print("got nack")
             sys.stdout.flush()
             self.sent_count -= 1
