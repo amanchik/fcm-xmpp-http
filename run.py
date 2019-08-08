@@ -154,13 +154,13 @@ def send_messages():
 
         while conn.sent_count > 90:
            time.sleep(1)
-           if time.time() - start > 900:
-               print("900 seconds so exit")
+           if time.time() - start > 300:
+               print("300 seconds so exit")
                sys.stdout.flush()
                kill_me()
 
-        if time.time() - start > 900:
-            print("900 seconds so exit")
+        if time.time() - start > 300:
+            print("300 seconds so exit")
             sys.stdout.flush()
             kill_me()
 
