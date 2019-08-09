@@ -75,7 +75,7 @@ class FCM(ClientXMPP):
             print("got ack")
             sys.stdout.flush()
             self.sent_count -= 1
-            del all_messages[obj['message_id']]
+            if obj['message_id'] in all_messages: del all_messages[obj['message_id']]
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
             r.publish("reports",json.dumps({'id':look_for,'data':op}))
             r.set(look_for,
@@ -90,7 +90,7 @@ class FCM(ClientXMPP):
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
                   'error': obj['error']}
-            del all_messages[obj['message_id']]
+            if obj['message_id'] in all_messages: del all_messages[obj['message_id']]
             if obj['error'] in failure_reasons:
                 op['failure_reason'] = failure_reasons[obj['error']]
             else:
