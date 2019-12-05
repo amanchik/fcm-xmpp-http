@@ -6,3 +6,4 @@ redis
 hyper
 PyJWT
 cryptography
+boto3

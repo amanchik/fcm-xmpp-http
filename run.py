@@ -18,6 +18,7 @@ import asyncio
 from aiohttp import web
 import redis
 import queue
+import boto3
 XMPP = {}
 app_keys = {}
 message_senders = {}
@@ -25,6 +26,22 @@ all_messages = {}
 failure_reasons = {'DEVICE_UNREGISTERED': 1, 'BAD_REGISTRATION': 2}
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 sent_messages = {}
+sqs = boto3.client('sqs', aws_access_key_id=os.environ['AWS_ID'],
+                      aws_secret_access_key=os.environ['AWS_KEY'],
+                      region_name='ap-south-1')
+queue_url = 'https://sqs.ap-south-1.amazonaws.com/706557323832/reports'
+def send_msg(msg):
+    sqs.send_message(
+        QueueUrl=queue_url,
+        DelaySeconds=10,
+        MessageAttributes={
+            'Type': {
+                'DataType': 'String',
+                'StringValue': 'Receipt'
+            }
+        },
+        MessageBody=json.dumps(msg)
+    )
 q = queue.Queue()
 max_message_limit = 100
 class FCM(ClientXMPP):
@@ -77,9 +94,9 @@ class FCM(ClientXMPP):
             self.sent_count -= 1
             if obj['message_id'] in all_messages: del all_messages[obj['message_id']]
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
-            r.publish("reports",json.dumps({'id':look_for,'data':op}))
-            r.set(look_for,
-                  json.dumps(op))
+            send_msg({'id': look_for, 'data': op})
+         #   r.publish("reports",json.dumps({'id':look_for,'data':op}))
+          #  r.set(look_for,json.dumps(op))
             if 'from' in obj:
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 self.fcm_send(json.dumps(ack))
@@ -95,17 +112,17 @@ class FCM(ClientXMPP):
                 op['failure_reason'] = failure_reasons[obj['error']]
             else:
                 op['failure_reason'] = 3
-            r.publish("reports", json.dumps({'id': look_for, 'data': op}))
-            r.set(look_for,
-                  json.dumps(op))
+            send_msg({'id': look_for, 'data': op})
+          #  r.publish("reports", json.dumps({'id': look_for, 'data': op}))
+         #   r.set(look_for,json.dumps(op))
         elif obj['message_type'] == 'receipt':
             print("got receipt")
             sys.stdout.flush()
             look_for = today + '_message_' + obj['message_id'][4:]
             op = {'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}
-            r.publish("reports", json.dumps({'id': look_for, 'data': op}))
-            r.set(look_for,
-                  json.dumps(op))
+            send_msg({'id': look_for, 'data': op})
+           # r.publish("reports", json.dumps({'id': look_for, 'data': op}))
+           # r.set(look_for,json.dumps(op))
         elif obj['message_type'] == 'control':
             print("connection draining "+obj['control_type'])
             sys.stdout.flush()
