@@ -28,7 +28,7 @@ def send_ios_push(id,key,team_id,bundle_id,tokens,title,message):
 
     #PUSH_ID = device_token
 
-    f = open(APNS_AUTH_KEY)
+    f = open('/home/pins100/fcm-xmpp-http/'+APNS_AUTH_KEY)
     secret = f.read()
 
     token = jwt.encode(
