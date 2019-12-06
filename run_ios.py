@@ -8,8 +8,8 @@ import jwt
 import time
 import sys
 from hyper import HTTPConnection, HTTP20Connection
-response = requests.get(os.environ['APP_URL'])
-data = response.json()
+#response = requests.get(os.environ['APP_URL'])
+#data = response.json()
 r = redis.Redis(host=os.environ['REDIS_HOST'], port=6379, db=0)
 
 
