@@ -29,8 +29,17 @@ sent_messages = {}
 sqs = boto3.client('sqs', aws_access_key_id=os.environ['AWS_ID'],
                       aws_secret_access_key=os.environ['AWS_KEY'],
                       region_name='ap-south-1')
+sns = boto3.client('sns', aws_access_key_id=os.environ['AWS_ID'],
+                      aws_secret_access_key=os.environ['AWS_KEY'],
+                      region_name='ap-south-1')
 queue_url = 'https://sqs.ap-south-1.amazonaws.com/706557323832/reports'
 def send_msg(msg):
+    sns.publish(
+        TargetArn="arn:aws:sns:ap-south-1:706557323832:push-sent-delivery",
+        Message=json.dumps(msg),
+   #     MessageStructure='json'
+    )
+    '''
     sqs.send_message(
         QueueUrl=queue_url,
         DelaySeconds=10,
@@ -42,6 +51,10 @@ def send_msg(msg):
         },
         MessageBody=json.dumps(msg)
     )
+    :param msg:
+    :return:
+    '''
+
 q = queue.Queue()
 max_message_limit = 100
 class FCM(ClientXMPP):
