@@ -78,15 +78,16 @@ class FCM(ClientXMPP):
 
     def fcm_message(self, data):
         global sent_messages
-        print(data)
+     #   print(data)
         y = BeautifulSoup(str(data), features='html.parser')
-        print(y.message.gcm.text)
+       # print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
 
-        print(obj)
+    #    print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
 
         if obj['message_type'] == 'ack':
+            print("ack")
             look_for = today + '_status_' + obj['message_id']
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
@@ -97,6 +98,7 @@ class FCM(ClientXMPP):
                 ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
                 self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
+            print("nack")
             look_for = today + '_status_' + obj['message_id']
             self.sent_count -= 1
             op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
@@ -109,6 +111,7 @@ class FCM(ClientXMPP):
          #   r.publish("reports", json.dumps({'id': look_for, 'data': op}))
           #  r.set(look_for,json.dumps(op))
         elif obj['message_type'] == 'receipt':
+            print("receipt")
             look_for = today + '_message_' + obj['message_id'][4:]
             op = {'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}
             send_msg({'id': look_for, 'data': op})
@@ -197,10 +200,14 @@ async def handle(request):
     body = await  request.json()
     #  for message in body:
     #     print(message['notification'])
+    fcm_sender_id = body['id']
+    message = body['message']
+  #  fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
+    if XMPP[fcm_sender_id].is_connected():
+        XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+    return web.Response(text="done")
 
-    fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
-
-
+'''
     for message in body:
         if XMPP[fcm_sender_id].is_connected() and XMPP[fcm_sender_id].sent_count <= max_message_limit:
             try:
@@ -217,15 +224,15 @@ async def handle(request):
         else:
             r.rpush(fcm_sender_id,json.dumps({'id':fcm_sender_id,'message':message}))
 
-
     return web.Response(text="done")
+'''
 
 
 async def init(loop, host: str, port: str):
     "Initialize the HTTP server"
     app = web.Application(loop=loop)
-
-    app.router.add_route('POST', '/{fcm_sender_id}', handle)
+    app.router.add_route('POST', '/push', handle)
+   # app.router.add_route('POST', '/{fcm_sender_id}', handle)
     app.router.add_route('GET', '/reconnect', reconnect)
     app.router.add_route('GET', '/finish', restart_jobs)
     srv = await loop.create_server(app.make_handler(), host, port)
