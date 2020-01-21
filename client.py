@@ -205,6 +205,8 @@ async def handle(request):
   #  fcm_sender_id = request.match_info.get('fcm_sender_id', "0")
     if XMPP[fcm_sender_id].is_connected():
         XMPP[fcm_sender_id].fcm_send(json.dumps(message))
+    else:
+        print("not connected")
     return web.Response(text="done")
 
 '''
