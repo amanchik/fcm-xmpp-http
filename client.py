@@ -232,15 +232,18 @@ async def handle(request):
 
 async def init(loop, host: str, port: str):
     "Initialize the HTTP server"
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('POST', '/push', handle)
    # app.router.add_route('POST', '/{fcm_sender_id}', handle)
     app.router.add_route('GET', '/reconnect', reconnect)
     app.router.add_route('GET', '/finish', restart_jobs)
-    srv = await loop.create_server(app.make_handler(), host, port)
-    log.info("Server started at http://%s:%s", host, port)
-    return srv
-
+  #  srv = await loop.create_server(app.make_handler(), host, port)
+  #  log.info("Server started at http://%s:%s", host, port)
+  #  return srv
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host, port)
+    await site.start()
 
 def main(namespace):
     "Start the xmpp client and delegate the main loop to asyncio"
@@ -248,7 +251,8 @@ def main(namespace):
     data = response.json()
     loop = asyncio.get_event_loop()
     global XMPP,sent_messages
-    loop.run_until_complete(init(loop, namespace.host, namespace.port))
+    #loop.run_until_complete(init(loop, namespace.host, namespace.port))
+    init(loop, namespace.host, namespace.port)
 
     for x in data:
         app_keys[x['app_id']] = x['app_key']
