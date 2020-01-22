@@ -251,8 +251,8 @@ def main(namespace):
     data = response.json()
     loop = asyncio.get_event_loop()
     global XMPP,sent_messages
-    #loop.run_until_complete(init(loop, namespace.host, namespace.port))
-    init(loop, namespace.host, namespace.port)
+    loop.run_until_complete(init(loop, namespace.host, namespace.port))
+
 
     for x in data:
         app_keys[x['app_id']] = x['app_key']
