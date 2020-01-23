@@ -110,9 +110,9 @@ class FCM(ClientXMPP):
             send_msg({'id': look_for, 'data': op})
          #   r.publish("reports",json.dumps({'id':look_for,'data':op}))
           #  r.set(look_for,json.dumps(op))
-            if 'from' in obj:
-                ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
-                self.fcm_send(json.dumps(ack))
+         #   if 'from' in obj:
+         #       ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
+         #       self.fcm_send(json.dumps(ack))
         elif obj['message_type'] == 'nack':
             look_for = today + '_status_' + obj['message_id']
             print("got nack")
