@@ -99,48 +99,54 @@ class FCM(ClientXMPP):
 
       #  print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
+        if 'message_type' in obj:
+            if obj['message_type'] == 'ack':
+                look_for = today + '_status_' + obj['message_id']
+                print("got ack")
+                sys.stdout.flush()
+                self.sent_count -= 1
+                if obj['message_id'] in all_messages: del all_messages[obj['message_id']]
+                parts = obj['message_id'].split('_')
+                requests.get(os.environ['APP_DELIVERY_URL']+'/'+parts[-1]+'?status=W')
+                op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
+               # send_msg({'id': look_for, 'data': op})
+             #   r.publish("reports",json.dumps({'id':look_for,'data':op}))
+              #  r.set(look_for,json.dumps(op))
+             #   if 'from' in obj:
+             #       ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
+             #       self.fcm_send(json.dumps(ack))
+            elif obj['message_type'] == 'nack':
+                look_for = today + '_status_' + obj['message_id']
+                print("got nack")
+                sys.stdout.flush()
+                self.sent_count -= 1
+                op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
+                      'error': obj['error']}
+                if obj['message_id'] in all_messages: del all_messages[obj['message_id']]
+                failure_reason = 3
+                if obj['error'] in failure_reasons:
+                    failure_reason = failure_reasons[obj['error']]
 
-        if obj['message_type'] == 'ack':
-            look_for = today + '_status_' + obj['message_id']
-            print("got ack")
-            sys.stdout.flush()
-            self.sent_count -= 1
-            if obj['message_id'] in all_messages: del all_messages[obj['message_id']]
-            op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id']}
-            send_msg({'id': look_for, 'data': op})
-         #   r.publish("reports",json.dumps({'id':look_for,'data':op}))
-          #  r.set(look_for,json.dumps(op))
-         #   if 'from' in obj:
-         #       ack = {'to': obj['from'], 'message_id': obj['message_id'], 'message_type': 'ack'}
-         #       self.fcm_send(json.dumps(ack))
-        elif obj['message_type'] == 'nack':
-            look_for = today + '_status_' + obj['message_id']
-            print("got nack")
-            sys.stdout.flush()
-            self.sent_count -= 1
-            op = {'online_notification_sent_at': int(time.time()), 'message_id': obj['message_id'],
-                  'error': obj['error']}
-            if obj['message_id'] in all_messages: del all_messages[obj['message_id']]
-            if obj['error'] in failure_reasons:
-                op['failure_reason'] = failure_reasons[obj['error']]
-            else:
-                op['failure_reason'] = 3
-            send_msg({'id': look_for, 'data': op})
-          #  r.publish("reports", json.dumps({'id': look_for, 'data': op}))
-         #   r.set(look_for,json.dumps(op))
-        elif obj['message_type'] == 'receipt':
-            print("got receipt")
-            sys.stdout.flush()
-            look_for = today + '_message_' + obj['message_id'][4:]
-            op = {'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}
-            send_msg({'id': look_for, 'data': op})
-           # r.publish("reports", json.dumps({'id': look_for, 'data': op}))
-           # r.set(look_for,json.dumps(op))
-        elif obj['message_type'] == 'control':
-            print("connection draining "+obj['control_type'])
-            sys.stdout.flush()
-            self.draining = True
-
+                parts = obj['message_id'].split('_')
+                requests.get(os.environ['APP_DELIVERY_URL'] + '/' + parts[-1] + '?status=F&failure_reason='+str(failure_reason))
+           #     send_msg({'id': look_for, 'data': op})
+              #  r.publish("reports", json.dumps({'id': look_for, 'data': op}))
+             #   r.set(look_for,json.dumps(op))
+            elif obj['message_type'] == 'receipt':
+                print("got receipt")
+                sys.stdout.flush()
+                look_for = today + '_message_' + obj['message_id'][4:]
+                op = {'notification_delivered_at': int(time.time()), 'message_id': obj['message_id'][4:]}
+             #   send_msg({'id': look_for, 'data': op})
+               # r.publish("reports", json.dumps({'id': look_for, 'data': op}))
+               # r.set(look_for,json.dumps(op))
+            elif obj['message_type'] == 'control':
+                print("connection draining "+obj['control_type'])
+                sys.stdout.flush()
+                self.draining = True
+        elif 'data' in obj:
+            info_id = obj['data']['message_id']
+            requests.get(os.environ['APP_DELIVERY_URL'] + '/' + info_id)
 
     def start(self):
         self.connect(address=('fcm-xmpp.googleapis.com', 5235), use_ssl=True, disable_starttls=False)
