@@ -95,7 +95,7 @@ class FCM(ClientXMPP):
         y = BeautifulSoup(str(data), features='html.parser')
      #   print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
-      #  print(obj)
+        print(obj)
 
       #  print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())

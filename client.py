@@ -83,7 +83,7 @@ class FCM(ClientXMPP):
        # print(y.message.gcm.text)
         obj = json.loads(y.message.gcm.text)
 
-    #    print(obj)
+        print(obj)
         today = '{0:%d-%m-%Y}'.format(datetime.datetime.now())
 
         if 'message_type' in obj:
